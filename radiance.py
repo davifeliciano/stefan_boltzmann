@@ -10,18 +10,27 @@ plt.rcParams.update({
 })
 
 l_a_ratio = 1.47e7
+delta_l_a_ratio = 0.06e7
 
 
 # for temperatures between 90 and 750
-def resistance_1(temp):
+def resistivity_1(temp):
     return (- 1.06871 + 2.06884e-2 * temp + 1.27971e-6 * temp ** 2 +
-            8.53101e-9 * temp ** 3 - 5.14195e-12 * temp ** 4) * l_a_ratio * 1e-8
+            8.53101e-9 * temp ** 3 - 5.14195e-12 * temp ** 4) * 1e-8
+
+
+def resistance_1(temp):
+    return resistivity_1(temp) * l_a_ratio
 
 
 # for temperatures between 700 and 3600
-def resistance_2(temp):
+def resistivity_2(temp):
     return (- 1.72573 + 2.1435e-2 * temp + 5.74811e-6 * temp ** 2 -
-            1.13698e-9 * temp ** 3 + 1.1167e-13 * temp ** 4) * l_a_ratio * 1e-8
+            1.13698e-9 * temp ** 3 + 1.1167e-13 * temp ** 4) * 1e-8
+
+
+def resistance_2(temp):
+    return resistivity_2(temp) * l_a_ratio
 
 
 radiance_df = pd.read_csv('data/radiance.csv')
@@ -33,8 +42,8 @@ lamp_current = radiance_df.iloc[:, 2].to_numpy()
 delta_lamp_current = radiance_df.iloc[:, 3].to_numpy()
 
 lamp_resistance = lamp_voltage / lamp_current
-delta_lamp_resistance = delta_lamp_voltage / \
-    lamp_voltage + delta_lamp_current / lamp_current
+delta_lamp_resistance = np.sqrt((delta_lamp_voltage / lamp_voltage) **
+                                2 + (delta_lamp_current / lamp_current) ** 2) * lamp_resistance
 
 lamp_temp = np.zeros_like(lamp_resistance)
 delta_lamp_temp = np.zeros_like(lamp_temp)
@@ -44,17 +53,18 @@ for i in range(lamp_resistance.size):
 
     if lamp_resistance[i] <= resistance_1(750):
         a, b = (90, 750)
+        resistivity = resistivity_1
         resistance = resistance_1
     else:
         a, b = (750, 3600)
+        resistivity = resistivity_1
         resistance = resistance_2
 
     lamp_temp[i] = bisect(lambda temp: resistance(temp) - lamp_resistance[i],
                           a, b, full_output=False)
 
-    delta_lamp_temp[i] = delta_lamp_resistance[i] / \
-        derivative(resistance, lamp_temp[i], dx=0.1)
-
+    delta_lamp_temp[i] = resistivity(lamp_temp[i]) * np.sqrt((delta_lamp_resistance[i] / lamp_resistance[i]) ** 2 +
+                                                             (delta_l_a_ratio / l_a_ratio) ** 2) / derivative(resistivity, lamp_temp[i], dx=0.01)
 
 sensor_voltage = radiance_df.iloc[:, 4].to_numpy()
 delta_sensor_voltage = radiance_df.iloc[:, 5].to_numpy()
@@ -96,8 +106,8 @@ ax_radiance.set(xlabel=r'$T$ (K)',
                 xscale='log',
                 yscale='log')
 
-ax_radiance.plot(lamp_temp, sensor_voltage, 'ro',
-                 ms=2.8, label='Medidas', zorder=1)
+ax_radiance.errorbar(lamp_temp, sensor_voltage, xerr=delta_lamp_temp,
+                     fmt='ro', ms=2.8, color='red', label='Medidas', zorder=1)
 
 temp = np.linspace(500, 1600)
 
@@ -143,8 +153,8 @@ ax_power.set(xlabel=r'$T$ (K)',
              xscale='log',
              yscale='log')
 
-ax_power.plot(lamp_temp, lamp_power, 'ro',
-              ms=2.8, label='Medidas', zorder=1)
+ax_power.errorbar(lamp_temp, lamp_power, xerr=delta_lamp_temp,
+                  fmt='ro', ms=2.8, color='red', label='Medidas', zorder=1)
 
 ax_power.plot(temp, coeff_2 * temp ** exponent_2, linewidth=0.7, color='red',
               label=rf'$P(T) = ({sci_to_latex(coeff_2)}) T^{{{exponent_2:.2f}}}$', zorder=1)
