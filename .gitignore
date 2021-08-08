@@ -1,5 +1,4 @@
-plots
 pdfs
-*.csv
 *.gsheet
 desktop.ini
+*/desktop.ini
