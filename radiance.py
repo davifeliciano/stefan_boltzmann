@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 
 plt.rcParams.update({
     'text.usetex': True,
+    'text.latex.preamble': r'\usepackage{siunitx}'
 })
 
 l_a_ratio = 1.47e7
-delta_l_a_ratio = 0.06e7
+delta_l_a_ratio = 0.09e7
 
 
 # for temperatures between 90 and 750
@@ -100,16 +101,18 @@ def sci_to_latex(float):
 # ploting sensor voltage vs lamp temperatures
 fig_radiance, ax_radiance = plt.subplots()
 
-ax_radiance.set(xlabel=r'$T$ (K)',
-                ylabel=r'$U_{p}$ (V)',
-                xlim=(500, 1600),
+xlim = (500, 1900)
+
+ax_radiance.set(xlabel=r'$T$ (\si{\kelvin})',
+                ylabel=r'$U_{p}$ (\si{\volt})',
+                xlim=xlim,
                 xscale='log',
                 yscale='log')
 
 ax_radiance.errorbar(lamp_temp, sensor_voltage, xerr=delta_lamp_temp,
-                     fmt='ro', ms=2.8, color='red', label='Medidas', zorder=1)
+                     fmt='ro', ms=2.8, label='Medidas', zorder=1)
 
-temp = np.linspace(500, 1600)
+temp = np.linspace(*xlim)
 
 ax_radiance.plot(temp, coeff * temp ** exponent, linewidth=0.7, color='red',
                  label=rf'$U_p(T) = ({sci_to_latex(coeff)}) T^{{{exponent:.2f}}}$', zorder=1)
@@ -147,14 +150,14 @@ print(f'exponent error = {delta_exponent_2:.2f}')
 # ploting lamp power draw vs lamp temps
 fig_power, ax_power = plt.subplots()
 
-ax_power.set(xlabel=r'$T$ (K)',
-             ylabel=r'$P$ (W)',
-             xlim=(500, 1600),
+ax_power.set(xlabel=r'$T$ (\si{\kelvin})',
+             ylabel=r'$P$ (\si{\watt})',
+             xlim=xlim,
              xscale='log',
              yscale='log')
 
 ax_power.errorbar(lamp_temp, lamp_power, xerr=delta_lamp_temp,
-                  fmt='ro', ms=2.8, color='red', label='Medidas', zorder=1)
+                  fmt='ro', ms=2.8, label='Medidas', zorder=1)
 
 ax_power.plot(temp, coeff_2 * temp ** exponent_2, linewidth=0.7, color='red',
               label=rf'$P(T) = ({sci_to_latex(coeff_2)}) T^{{{exponent_2:.2f}}}$', zorder=1)
